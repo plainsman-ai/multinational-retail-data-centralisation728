@@ -1,6 +1,7 @@
 import yaml
-import psycopg2
+import pandas as pd
 from sqlalchemy import create_engine, inspect
+
 
 class DatabaseConnector:
 
@@ -25,12 +26,9 @@ class DatabaseConnector:
 
     def list_db_tables(self):
         self.init_db_engine()
-        with psycopg2.connect(host=self.HOST, user=self.USER, password=self.PASSWORD, dbname=self.DATABASE, port=self.PORT) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""SELECT table_name FROM information_schema.tables
-                                WHERE table_schema = 'public'""")
-                for table in cur.fetchall():
-                    print(table)
+        inspector = inspect(self.engine)
+        table_names = inspector.get_table_names()
+        print(table_names)
 
-    def upload_to_db(data_frame, table_name):
-        pass
+    def upload_to_db(self, my_dframe, table_name):
+        my_dframe.to_sql(f'{table_name}', self.engine, if_exists='replace')
