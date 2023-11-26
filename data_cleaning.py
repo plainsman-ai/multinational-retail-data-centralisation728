@@ -46,4 +46,12 @@ class DataCleaning(data_extraction.DataExtractor):
 
     
     def clean_card_data(self):
-        pass
+        card_data = self.retrieve_pdf_data('https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf')
+        card_data = card_data[0]    # extract dataframe from list
+
+        card_data["date_payment_confirmed"] = pd.to_datetime(card_data["date_payment_confirmed"], errors='coerce')
+
+        card_data = card_data.dropna()  # drops all rows w empty data and makes columns equal
+        card_data = card_data.reset_index(drop=True)
+
+        return card_data
