@@ -2,6 +2,7 @@ import database_utils
 import pandas as pd
 import tabula
 import requests
+import boto3
 
 
 class DataExtractor(database_utils.DatabaseConnector):
@@ -9,6 +10,8 @@ class DataExtractor(database_utils.DatabaseConnector):
     api_key = {"X-API-key": "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
     num_stores_url = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
     store_url = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
+
+    s3_address = "s3://data-handling-public/products.csv"
 
     def __init__(self):
         self.init_db_engine()
@@ -39,6 +42,6 @@ class DataExtractor(database_utils.DatabaseConnector):
         stores_data = pd.DataFrame(json_data, index=number_stores)
         return stores_data
     
-    def retrieve_one_store(self, url=store_url, headers=api_key):
-        response = requests.get(url.format(store_number=1), headers=headers)
-        return response.json()
+    def extract_from_s3(address=s3_address):
+        pass
+    
