@@ -1,7 +1,7 @@
 import data_extraction
-from dateutil.parser import parse
 import pandas as pd
-
+import numpy as np
+from dateutil.parser import parse
 
 class DataCleaning(data_extraction.DataExtractor):
     
@@ -23,26 +23,6 @@ class DataCleaning(data_extraction.DataExtractor):
         
         return legacy_users_data
     
-    def clean_other_data(self):
-        # NB here temporarily bc user data only needed atm
-
-        ### step 2 - cleaning legacy_store_details table
-
-        legacy_stores_data = self.read_rds_table("legacy_store_details")
-
-        legacy_stores_data = legacy_stores_data.drop("lat", axis=1) # drops a column w only 11 entries
-        legacy_stores_data = legacy_stores_data[legacy_stores_data["store_type"].isin(["Local", "Super Store", "Mall Kiosk", "Outlet", "Web Portal"])]
-        legacy_stores_data["continent"].replace({'eeEurope':'Europe', 'eeAmerica': 'America'}, inplace=True)
-
-        legacy_stores_data["opening_date"] =  legacy_stores_data["opening_date"].apply(parse)
-        legacy_stores_data["opening_date"] = pd.to_datetime(legacy_stores_data["opening_date"], errors='coerce')
-        legacy_stores_data = legacy_stores_data.dropna() # drops a row where latitude is empty
-
-        legacy_stores_data = legacy_stores_data.drop("index", axis=1)
-
-        orders_data = self.read_rds_table("orders_table")
-
-        orders_data = orders_data.drop("1", axis=1)
 
     
     def clean_card_data(self):
@@ -52,6 +32,94 @@ class DataCleaning(data_extraction.DataExtractor):
         card_data["date_payment_confirmed"] = pd.to_datetime(card_data["date_payment_confirmed"], errors='coerce')
 
         card_data = card_data.dropna()  # drops all rows w empty data and makes columns equal
+
         card_data = card_data.reset_index(drop=True)
 
         return card_data
+    
+
+
+    def clean_stores_data(self):
+        stores_data = self.retrieve_stores_data()
+
+        stores_data = stores_data.drop("lat", axis=1)
+
+        stores_data["continent"].replace({'eeEurope':'Europe', 'eeAmerica': 'America'}, inplace=True)
+        stores_data = stores_data[stores_data["continent"].isin(["Europe", "America"])]
+        
+        stores_data["opening_date"] =  stores_data["opening_date"].apply(parse)
+        stores_data["opening_date"] = pd.to_datetime(stores_data["opening_date"], errors='coerce')
+
+        stores_data = stores_data.dropna()
+
+        stores_data = stores_data.drop("index", axis=1)
+        stores_data = stores_data.reset_index(drop=True)
+
+        return stores_data
+    
+
+
+    def convert_product_weights(self):
+        product_weights = self.extract_from_s3()
+        
+        def convert(weight):
+            if type(weight) == float:
+                return weight
+            if weight[-2:] == "kg":
+                return float(weight[:-2])
+            elif weight[-1] == "g" and "x" in weight:
+                weight_split = weight.split("x")
+                return float(convert(weight_split[-2])) * float(convert(weight_split[-1]))
+            elif weight[-1] == "g":
+                return float(weight[:-1]) / 1000
+            elif weight[-2:] == "ml":
+                return float(weight[:-2]) / 1000
+            elif weight[-1] == ".":
+                return float(convert(weight[:-1]))
+            elif weight[-1] == " ":
+                return float(convert(weight[:-1]))
+            elif weight[-2:] == "oz":
+                return float(weight[:-2]) * 0.034
+            else:
+                return weight
+            
+        product_weights["weight"] = product_weights["weight"].apply(convert)
+
+        return product_weights
+
+
+
+    def clean_products_data(self):
+        products_data = self.convert_product_weights()
+
+        products_data = products_data.drop("Unnamed: 0", axis=1)
+
+        products_data["removed"].replace({"Still_avaliable": "Still_available"}, inplace=True)
+        products_data = products_data[products_data["removed"].isin(["Still_available", "Removed"])]
+
+        products_data["date_added"] =  products_data["date_added"].apply(parse)
+        products_data["date_added"] = pd.to_datetime(products_data["date_added"], errors='coerce')
+
+        return products_data
+    
+
+    def clean_orders_data(self):
+        orders_data = self.read_rds_table("orders_table")
+
+        orders_data = orders_data.drop(["1", "first_name", "last_name", "level_0", "index"], axis=1)
+
+        return orders_data
+    
+    def clean_sales_data(self):
+        sales_data = self.extract_sales_file()
+
+        sales_data = sales_data[sales_data["time_period"].isin(["Evening", "Midday", "Morning", "Late_Hours"])]
+        sales_data = sales_data.reset_index(drop=True)
+
+        return sales_data
+
+    
+if __name__ == "__main__":
+    cleaner = DataCleaning()
+    sales_data = cleaner.clean_sales_data()
+    cleaner.upload_to_db(sales_data, "dim_date_times")

@@ -32,3 +32,14 @@ class DatabaseConnector:
 
     def upload_to_db(self, my_dframe, table_name):
         my_dframe.to_sql(f'{table_name}', self.engine, if_exists='replace')
+
+
+    def read_my_db_cred():
+         with open('pword_yaml.yaml', 'r') as my_creds:
+            db_cred = yaml.safe_load(my_creds)
+            return db_cred
+    
+    def upload_to_db(self, my_dframe, table_name):
+        my_pword = DatabaseConnector.read_my_db_cred()
+        self.engine = create_engine(f"{self.DATABASE_TYPE}+{self.DBAPI}://{'postgres'}:{my_pword}@{'localhost'}:{5432}/{'sales_data'}")
+        my_dframe.to_sql(f'{table_name}', self.engine, if_exists='replace')

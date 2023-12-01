@@ -42,6 +42,17 @@ class DataExtractor(database_utils.DatabaseConnector):
         stores_data = pd.DataFrame(json_data, index=number_stores)
         return stores_data
     
-    def extract_from_s3(address=s3_address):
-        pass
-    
+    def extract_from_s3(self, address=s3_address):
+        split_ad = address.split("/")
+        bucket = split_ad[2]
+        file = split_ad[3]
+        s3 = boto3.client('s3')
+        s3.download_file(bucket, file, "/home/plainsman/retail_data_centralization" + "/" + file)    
+        with open("/home/plainsman/retail_data_centralization/" + "/" + file) as data:
+            store_data = pd.read_csv(data)
+            return store_data
+        
+    def extract_sales_file(self):
+        response = requests.get("https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json")
+        sales_data = pd.DataFrame(response.json())
+        return sales_data
