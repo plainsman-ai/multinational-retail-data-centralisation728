@@ -12,4 +12,6 @@ The data gathering part of this project involved extracting and cleaning data fr
 - An API, for which I used the package FastAPI
 - A CSV file stored in an S3 bucket, for which I used the package boto3 to download the file
 
-After retrieving the data from these sources, which were either in a CSV, a JSON, or stored as text in a pdf, I cleaned them using pandas and uploaded them to a SQL database on my machine. I proceeded to 
+After retrieving the data from these sources, which were either in a CSV, a JSON, or stored as text in a pdf, I cleaned them using pandas and uploaded them to a SQL database on my machine. I updated the columns in this database by casting types and adding categorical entries (e.g. categories for products by weight). I defined primary keys and foreign keys which would connect all of the tables around the orders_table into a star-based schema.
+
+The last step was to query the data on pgadmin, which can be found in the file sql_queries.sql (although this is not a script but a record of the queries i submitted).
